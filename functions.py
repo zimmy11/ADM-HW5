@@ -176,6 +176,8 @@ def summarize_graph_features(flight_network):
 
 def analysis_traffic_passengers(df, number_of_busiest_routes = 10):
 
+    df = df[df["Distance"] > 0]
+
     df_grouped_airports = df.groupby(['Origin_airport', 'Destination_airport'])['Passengers'].sum().reset_index()
 
     df_sorted_passengers = df_grouped_airports.sort_values(by = ["Passengers"], ascending = False)[["Origin_airport", "Destination_airport", "Passengers"]].head(number_of_busiest_routes)
@@ -197,7 +199,7 @@ def analysis_traffic_passengers(df, number_of_busiest_routes = 10):
 
     df_average_traffic = df.groupby(['Origin_airport', 'Destination_airport'])['Passengers'].mean().reset_index()
     df_average_traffic = df_average_traffic.rename(columns = {"Passengers": "Average_Passengers"})
-    df_average_traffic["Average_Passengers"] = df_average_traffic["Average_Passengers"].round(1)
+    df_average_traffic["Average_Passengers"] = df_average_traffic["Average_Passengers"]
 
     df_most_traffic = df_average_traffic.sort_values(by = ["Average_Passengers"], ascending = False)[["Origin_airport", "Destination_airport", "Average_Passengers"]].head(number_of_busiest_routes)
 
