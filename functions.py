@@ -9,6 +9,7 @@ from folium.plugins import MarkerCluster
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import heapq
 
 
 def create_airport_graph(df):
@@ -300,7 +301,96 @@ def generate_report(df, flight_network, number_of_busiest_routes=10):
 
 
     
+def filter_graph_by_date(G, attr, date):
+    G_filtered = nx.Graph()
+    for u, v, data in G.edges(data=True):
+        if data.get(attr, 0) == date: 
 
+            G_filtered.add_edge(u, v, **data)
+            G_filtered.add_node(u, **G.nodes[u])
+            G_filtered.add_node(v, **G.nodes[v])  
+    
+    return G_filtered
+
+def compute_Dijkstra(flight_network, source):
+    distances_dict = {source: 0}
+    prev = {source: None}
+    pq = [(0, source)] 
+   
+    for node, data in flight_network.nodes(data = True):
+        if node != source:
+            distances_dict[node] = np.inf
+        prev[node] = None
+    
+    while pq:
+        current_distance, current_node = heapq.heappop(pq)
+        for next_node, data in flight_network[current_node].items():
+            distance = current_distance + data["weight"]
+            if distance < distances_dict[next_node]:
+                distances_dict[next_node] = distance
+                prev[next_node] = current_node
+                heapq.heappush(pq, (distance, next_node))
+                
+    return distances_dict, prev
+
+
+
+def reconstruct_path(prev, destination, source):
+    path = []
+    current_node = destination
+    
+   
+    while current_node is not None:
+        path.append(current_node)
+        current_node = prev.get(current_node, None)
+    
+   
+    if path and path[-1] == source:
+        path.reverse()  
+        return path
+    else:
+        return []  
+
+
+
+def compute_best_route(graph, origin, destination, date):
+    
+    # We filter the network based on the date creating a new one without the uncecessary connections
+    filtered_network = filter_graph_by_date(graph, "fly_date", date)
+    # We search all airports in the origin 
+    origin_airports = [node for node, data in filtered_network.nodes(data=True) if origin in data.get("city", "")]
+    destination_airports = [node for node, data in filtered_network.nodes(data=True) if destination in data.get("city", "")]
+    best_distance = np.inf
+    best_route = ''
+
+    for source in origin_airports:
+        
+       
+        distances_dict, prev = compute_Dijkstra(filtered_network, source)
+        for i in range(len(destination_airports)):
+            
+            distance = distances_dict[destination_airports[i]]
+            
+            if distance < best_distance:
+                best_distance = distance
+                best_route = "->".join(reconstruct_path(prev, destination_airports[i], source))
+
+    if best_route == '':
+        best_route = 'No route found.'
+    
+    data = {
+    'Origin_city_airport': [origin],
+    'Destination_city_airport': [destination],
+    'Best_route': [best_route]    
+    }
+    
+    
+    return pd.DataFrame(data)
+            
+
+
+
+    
 
 
 
