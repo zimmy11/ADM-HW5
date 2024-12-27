@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import heapq
+from collections import deque
 
 
 def create_airport_graph(df):
@@ -489,7 +490,154 @@ def compute_best_route(graph, origin, destination, date):
     # Return the result as a DataFrame.
     return pd.DataFrame(data)  
 
+def degree_centrality(graph):
+    n = len(graph)
+    centrality = {}
+
+    for node in graph:
+        degree = len(graph[node])  # numero di vicini del nodo
+        centrality[node] = degree / (n - 1) if n > 1 else 0.0
+
+    return centrality
+
+
+def closeness_centrality(graph):
+
+    n = len(graph)
+    centrality = {}
+
+    def bfs_distances(start):
+        
+        dist = {node: None for node in graph}
+        dist[start] = 0
+        queue = deque([start])
+
+        while queue:
+            current = queue.popleft()
+            for neighbor in graph[current]:
+                if dist[neighbor] is None:
+                    dist[neighbor] = dist[current] + 1
+                    queue.append(neighbor)
+        return dist
+
+    for node in graph:
+        dist_dict = bfs_distances(node)
+        
+        reachable_distances = [d for d in dist_dict.values() if d is not None and d > 0]
+        
+        if len(reachable_distances) == 0:
+          
+            centrality[node] = 0.0
+        else:
+            avg_distance = sum(reachable_distances) / len(reachable_distances)
             
+            centrality[node] = (len(reachable_distances)) / sum(reachable_distances)
+           
+
+    return centrality
+
+def betweenness_centrality(graph):
+ 
+    n = len(graph)
+    betweenness = {v: 0.0 for v in graph}  # inizializza a 0
+
+    for s in graph:
+        
+        stack = []
+        
+        pred = {v: [] for v in graph}
+       
+        sigma = {v: 0.0 for v in graph}
+        sigma[s] = 1.0
+        
+        dist = {v: -1 for v in graph}
+        dist[s] = 0
+
+        
+        queue = [s]
+        for v in queue:
+            for w in graph[v]:
+                
+                if dist[w] < 0:
+                    queue.append(w)
+                    dist[w] = dist[v] + 1
+                
+                if dist[w] == dist[v] + 1:
+                    sigma[w] += sigma[v]
+                    pred[w].append(v)
+            stack.append(v)
+
+      
+        delta = {v: 0.0 for v in graph}
+        while stack:
+            w = stack.pop()
+            for v in pred[w]:
+               
+                c = (sigma[v] / sigma[w]) * (1 + delta[w])
+                delta[v] += c
+            
+            if w != s:
+                betweenness[w] += delta[w]
+    for v in graph:
+        betweenness[v] /= 2.0
+
+    return betweenness
+
+import numpy as np
+
+def pagerank(graph, alpha=0.85, max_iter=100, tol=1e-6):
+    """
+    Computes the PageRank of each node in an unweighted graph 
+    (if directed, adapt the transition matrix accordingly).
+    graph: dict -> { node: set(neighbor_nodes), ... }
+    alpha: damping factor (default 0.85)
+    max_iter: maximum number of iterations (default 100)
+    tol: convergence tolerance (default 1e-6)
+
+    Returns a dict: {node: PR_value, ...}
+    """
+    # 1) Map nodes to indices (and vice versa)
+    nodes = list(graph.keys())
+    n = len(nodes)
+    idx = {node: i for i, node in enumerate(nodes)}
+
+    # 2) Compute out-degrees
+    outdegree = {node: len(graph[node]) for node in graph}
+
+    # 3) Build the transition matrix T (n x n)
+    #    T[i, j] = 1 / outdegree(j) if there is an edge j->i
+    T = np.zeros((n, n), dtype=float)
+
+    for node_j in graph:
+        j = idx[node_j]
+        if outdegree[node_j] == 0:
+            # Dangling node -> distribute evenly
+            for node_i in graph:
+                i = idx[node_i]
+                T[i, j] = 1.0 / n
+        else:
+            # Normalize among its neighbors
+            for node_i in graph[node_j]:
+                i = idx[node_i]
+                T[i, j] = 1.0 / outdegree[node_j]
+
+    # 4) Initialize PageRank vector
+    PR = np.ones(n, dtype=float) / n
+
+    # 5) Power iteration until convergence
+    for _ in range(max_iter):
+        PR_new = (1 - alpha) / n + alpha * T.dot(PR)
+        if np.linalg.norm(PR_new - PR, ord=1) < tol:
+            PR = PR_new
+            break
+        PR = PR_new
+
+    # 6) Return results as a dictionary
+    pagerank_dict = {}
+    for node in graph:
+        pagerank_dict[node] = PR[idx[node]]
+
+    return pagerank_dict
 
 
 
