@@ -40,7 +40,7 @@ ___
 
     <br>
 
-    - all *Folium* interactive maps asked in the Homework
+    - all *Folium* interactive maps asked in the Homework, like the following one:
  
     <br>
     
