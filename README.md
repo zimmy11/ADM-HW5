@@ -36,11 +36,11 @@ ___
     
     <br>
 
-  > __assets/flight_network_map.html__:
+  > __assets/*__:
 
     <br>
 
-    - *Folium* interactive map asked in the Q1
+    - all *Folium* interactive maps asked in the Homework
  
     <br>
     
